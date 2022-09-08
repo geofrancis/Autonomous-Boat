@@ -4,7 +4,6 @@
   
   Author: Udom
   Date: 9 Oct 2019
-
   *** you may need to disconnect the motor control pins before uploading the sketch ***
 */
 
@@ -15,23 +14,37 @@
 #define stepAng  18       // step angle
 #define numStep 10        // = 180/stepAng 
 
-#define servoPin 2        // GIO2 = D4
+#define servoPin D2        // GIO2 = D4
+#define motrpin D5        // GIO2 = D4
+#define motlpin D6        // GIO2 = D4
 
 // motors control pins
-#define LDir 14  //D5 = GPIO14
-#define LSpd 12  //D6 = GPIO12
-#define RSpd 13  //D7 = GPIO13
-#define RDir 15  //D8 = GPIO15
+
 
 // sampling interval for the motor control @80MHz
 #define CtrlIntv  4000000    // this gives 0.05 sec or 50ms
 
-#define TurnDelay 300       // turn for 300ms
-#define MinDistance 100     // 100mm
+#define TurnDelay 600       // turn for 300ms
+#define MinDistance 200     // 100mm
 
-Servo myservo;  		// create servo object to control a servo
+Servo myservo;      // create servo object to control a servo
+
+Servo motorL;
+Servo motorR;
+int Lesc = 1500;
+int Resc = 1500;
+int Lescs = 500;
+int Rescs = 500;
+
 
 VL53L1X sensor;
+int LDir = 1;  
+int LSpd = 1; 
+int RSpd = 1;
+int RDir = 1; 
+
+
+
 
 int pos = 0;          // servo position
 int dir = 1;          // servo moving direction: +1/-1
@@ -62,19 +75,17 @@ void inline motorCtrl_ISR(void){
 
   next=ESP.getCycleCount()+CtrlIntv;
   timer0_write(next);
+  
 }
 
-void setup() {
+void setup() {////////////////////////////////////////////////////////////////////////
   Serial.begin(115200);
   myservo.attach(servoPin);  
-    
-  pinMode(LSpd, OUTPUT);
-  pinMode(LDir, OUTPUT);
-  pinMode(RSpd, OUTPUT);
-  pinMode(RDir, OUTPUT);  
-  motorsStop();
-
-  Wire.begin();
+  motorL.attach(motlpin);
+  motorR.attach(motrpin);
+  delay(1000);  
+  
+  Wire.begin(D3, D4); //SDA, 
   Wire.setClock(400000); // use 400 kHz I2C
 
   //Initialize the timer
@@ -99,54 +110,41 @@ void setup() {
 
 void LeftMove(int speed, bool dir)
 {
-  digitalWrite(LDir, dir); 
-  if (dir)
-    analogWrite(LSpd, 1023-speed);  
+LDir = dir; 
+  if (dir = 1)
+    Lescs =   (speed);
   else
-    analogWrite(LSpd, speed);
+    Lescs =   (1000 -speed); 
+
+
 }
 
 void RightMove(int speed, bool dir)
 {
-  digitalWrite(RDir, dir); 
-  if (dir)
-    analogWrite(RSpd, 1023-speed);
+LDir = dir; 
+  if (dir = 1)
+    Rescs =   (speed);
   else
-    analogWrite(RSpd, speed);
+    Rescs = (1000 -speed); 
 }
+
 
 void motorsStop()
 {
-  digitalWrite(LSpd, LOW); 
-  digitalWrite(LDir, LOW); 
-  digitalWrite(RSpd, LOW); 
-  digitalWrite(RDir, LOW); 
-}
+  Rescs = 300;
+  Lescs = 300;
+} 
 
 void turnRight()
 {
-  noInterrupts();
-
-  digitalWrite(LDir, true);    
-  analogWrite(LSpd, 256);     // duty cycle 25%
-  digitalWrite(RDir, false);    
-  analogWrite(RSpd, 768);     // duty cycle 75%  
-  
-  delay(TurnDelay);
-  interrupts();
+  Rescs = 1;
+  Lescs = 300;
 }
 
 void turnLeft()
 {
-  noInterrupts();
-
-  digitalWrite(LDir, false);    
-  analogWrite(LSpd, 768);     // duty cycle 75%
-  digitalWrite(RDir, true);    
-  analogWrite(RSpd, 256);     // duty cycle 25%  
-  
-  delay(TurnDelay);
-  interrupts();
+  Rescs = 300;
+  Lescs = 1;
 }
 
 void loop() { 
@@ -176,4 +174,20 @@ void loop() {
   // find the front average sum
   if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
     frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep;  
+
+ Lesc = map (Lescs, 200, 600, 1000, 2000);
+ Resc = map (Rescs, 200, 600, 1000, 2000);
+  motorL.writeMicroseconds(Lesc);
+  motorR.writeMicroseconds(Resc);
+
+Serial.println(" Lmotor us ");
+Serial.println(Lesc);
+Serial.println(Lescs);
+
+Serial.println(" Rmotor us ");
+Serial.println(Resc);
+Serial.println(Rescs);
+
+Serial.println(" lidar ");
+Serial.println(val);
 }
