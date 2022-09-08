@@ -11,8 +11,8 @@
 #include <VL53L1X.h>
 #include <Servo.h>
 
-#define stepAng  18       // step angle
-#define numStep 10        // = 180/stepAng 
+#define stepAng  36       // step angle
+#define numStep 5        // = 180/stepAng 
 
 #define servoPin D2        // GIO2 = D4
 #define motrpin D5        // GIO2 = D4
@@ -24,8 +24,8 @@
 // sampling interval for the motor control @80MHz
 #define CtrlIntv  4000000    // this gives 0.05 sec or 50ms
 
-#define TurnDelay 600       // turn for 300ms
-#define MinDistance 200     // 100mm
+#define TurnDelay 10       // turn for 300ms
+#define MinDistance 100     // 100mm
 
 Servo myservo;      // create servo object to control a servo
 
@@ -114,7 +114,7 @@ LDir = dir;
   if (dir = 1)
     Lescs =   (speed);
   else
-    Lescs =   (1000 -speed); 
+    Lescs =   (-speed); 
 
 
 }
@@ -125,26 +125,26 @@ LDir = dir;
   if (dir = 1)
     Rescs =   (speed);
   else
-    Rescs = (1000 -speed); 
+    Rescs = (-speed); 
 }
 
 
 void motorsStop()
 {
-  Rescs = 300;
-  Lescs = 300;
+  Rescs = 500;
+  Lescs = 500;
 } 
 
 void turnRight()
 {
-  Rescs = 1;
-  Lescs = 300;
+  Rescs = 150;
+  Lescs = 200;
 }
 
 void turnLeft()
 {
-  Rescs = 300;
-  Lescs = 1;
+  Rescs = 200;
+  Lescs = 150;
 }
 
 void loop() { 
@@ -175,18 +175,18 @@ void loop() {
   if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
     frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep;  
 
- Lesc = map (Lescs, 200, 600, 1000, 2000);
- Resc = map (Rescs, 200, 600, 1000, 2000);
+ Lesc = map (Lescs, 200, 600, 900, 2000);
+ Resc = map (Rescs, 200, 600, 900, 2000);
   motorL.writeMicroseconds(Lesc);
   motorR.writeMicroseconds(Resc);
 
 Serial.println(" Lmotor us ");
-Serial.println(Lesc);
 Serial.println(Lescs);
 
+
 Serial.println(" Rmotor us ");
-Serial.println(Resc);
 Serial.println(Rescs);
+
 
 Serial.println(" lidar ");
 Serial.println(val);
