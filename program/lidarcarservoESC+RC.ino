@@ -14,9 +14,12 @@
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
 
+#define rudederpin D1        // GIO2 = D4
 #define servoPin D2        // GIO2 = D4
 #define motrpin D5        // GIO2 = D4
 #define motlpin D6        // GIO2 = D4
+
+
 #define motpin D7        // GIO2 = D4
 #define rudpin D8        // GIO2 = D4
 // motors control pins
@@ -30,13 +33,13 @@ Servo myservo;      // create servo object to control a servo
 
 Servo motorL;
 Servo motorR;
-
+Servo Rudder;
 
 int Lesc = 1500;
 int Resc = 1500;
 int Lescs = 500;
 int Rescs = 500;
-
+int rudders = 1500;
 int esc = 1500;
 int rudd = 1500;
 
@@ -190,15 +193,17 @@ void loop() {
 RCThr = pulseIn(motpin, HIGH);
 RCRud = pulseIn(rudpin, HIGH);    
 
- Lesc = map (Lescs, 100, 600, 800, 2100);
- Resc = map (Rescs, 100, 600, 800, 2100);
+ Lesc = map (Lescs, 100, 700, 800, 2100);
+ Resc = map (Rescs, 100, 700, 800, 2100);
  rmix = ((RCThr + RCRud)/2);
  lmix = ((1500 + (RCThr - RCRud)));
  rout = ((rmix + Resc)/2);
  lout = ((lmix + Lesc)/2);
+
+  rudders = ((Lesc + RCRud)/2)
   motorL.writeMicroseconds(lout);
   motorR.writeMicroseconds(rout);
-
+  motorR.writeMicroseconds(rudders);
  
 Serial.println(" Lmotor us ");
 Serial.println(lout);
