@@ -18,7 +18,7 @@
 #define servoPin D2        // GIO2 = D4
 #define motrpin D5        // GIO2 = D4
 #define motlpin D6        // GIO2 = D4
-
+#define motpin D0        // GIO2 = D4
 
 #define motpin D7        // GIO2 = D4
 #define rudpin D8        // GIO2 = D4
@@ -34,11 +34,13 @@ Servo myservo;      // create servo object to control a servo
 Servo motorL;
 Servo motorR;
 Servo Rudder;
+Servo motor;
 
 int Lesc = 1500;
 int Resc = 1500;
 int Lescs = 500;
 int Rescs = 500;
+int escs = 500;
 int rudders = 1500;
 int esc = 1500;
 int rudd = 1500;
@@ -55,7 +57,7 @@ int lmix;
 int rmix;
 int lout;
 int rout;
-
+int out;
 
 
 int pos = 0;          // servo position
@@ -98,7 +100,9 @@ void setup() {//////////////////////////////////////////////////////////////////
   myservo.attach(servoPin);  
   motorL.attach(motlpin);
   motorR.attach(motrpin);
-
+  Rudder.attach(rudederpin);
+  motor.attach(motpin);
+  
   pinMode(rudpin, INPUT);
   pinMode(motpin, INPUT);
 ;
@@ -200,13 +204,16 @@ RCRud = pulseIn(rudpin, HIGH);
  rout = ((rmix + Resc)/2);
  lout = ((lmix + Lesc)/2);
 
-  rudders = ((Lesc + RCRud)/2)
+  rudders = ((Lesc + RCRud)/2);
+
+if (lout > rout){   out = rout;}
+else { out = rout;}
   motorL.writeMicroseconds(lout);
   motorR.writeMicroseconds(rout);
-  motorR.writeMicroseconds(rudders);
+  Rudder.writeMicroseconds(rudders);
  
-Serial.println(" Lmotor us ");
-Serial.println(lout);
+Serial.println(" RCThr us ");
+Serial.println(RCThr);
 
 
 Serial.println(" Rmotor us ");
