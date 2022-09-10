@@ -19,6 +19,7 @@ motrpin D5     right motor out
 motlpin D6     left motor out
 
 motpin D7      motor out
+
 rudpin D8      rudder out
 
 Component List:
