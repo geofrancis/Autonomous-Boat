@@ -8,16 +8,16 @@ outputs for left and right ESC or servo wheels
 outputs for single throttle and rudder
 
 
-#define servoPin D2     scanner servo
+servoPin D2     scanner servo
 
-#define motpin D0       motor in   
-#define rudderpin D1    rudder in
+motpin D0       motor in   
+rudderpin D1    rudder in
       
-#define motrpin D5     right motor out 
-#define motlpin D6     left motor out
+motrpin D5     right motor out 
+motlpin D6     left motor out
 
-#define motpin D7      motor out
-#define rudpin D8      rudder out
+motpin D7      motor out
+rudpin D8      rudder out
 
 Component List:
 1. 2x TT motors with wheels
