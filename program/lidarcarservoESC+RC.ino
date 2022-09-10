@@ -15,58 +15,72 @@
 #define CtrlIntv  100000        // this gives 0.05 sec or 50ms  // sampling interval for the motor control @80MHz
 #define MinDistance 100     // 100mm
 
+//PWM outputs
 #define rudderpin D1     
 #define scannerPin D2       
 #define motrpin D5        
 #define motlpin D6       
-#define motpin D0        
+#define motpin D0   
+//RC inputs     
 #define RCmotpin D7        
 #define RCrudpin D8      
 
 
-Servo scanner;      // create servo object to control a servo
+
+
+//initialise////////////////////////////////////////////////////////////////////
+
+//create lidar object
+VL53L1X sensor;
+
+//create servo objects.
+Servo scanner;     
 Servo motorL;
 Servo motorR;
 Servo Rudder;
 Servo motor;
 
-int Lesc = 1500;
-int Resc = 1500;
-int Lescs = 500;
-int Rescs = 500;
-int escs = 500;
-int rudders = 1500;
-int esc = 1500;
-int rudd = 1500;
 
-
-VL53L1X sensor;
-int LDir = 1;  
-int LSpd = 1; 
-int RSpd = 1;
-int RDir = 1; 
+//rc inputs 
 int RCRud;
 int RCThr;
+
+//servo values
+int Lesc;
+int Resc;
+int esc;
+int rudd;
+int LDir;  
+int LSpd; 
+int RSpd;
+int RDir; 
 int lmix;
 int rmix;
+int Lescs;
+int Rescs;
+int escs;
+int rudders;
+
+//servo outputs us
 int lout;
 int rout;
 int out;
 
 
+
+//lidar values
 int pos = 0;          // servo position
 int dir = 1;          // servo moving direction: +1/-1
 int val;              // LiDAR measured value
-
 float distances[numStep+1]; // array for the distance at each angle, including at 0 and 180
-
 float leftSum, rightSum, frontSum;
-
 volatile unsigned long next;
 
-//=======================================================================
-// software timer interrupt: counts clock cycles at 80MHz
+
+// software timer interrupt: counts clock cycles at 80MHz////////////////////////////////////////////////////////////////////////
 void inline motorCtrl_ISR(void){
+
+//if distance is under critical distance execute hard left or right escape manouver.
   if (frontSum < MinDistance)
   {
     if (leftSum < rightSum)
@@ -74,7 +88,7 @@ void inline motorCtrl_ISR(void){
     else
       turnLeft();
   }          
-
+// if steer left or right based on the average of each side 
 
   int lsp = (int)(1000*rightSum/(leftSum+rightSum));
   int rsp = (int)(1000*leftSum/(leftSum+rightSum));
@@ -89,19 +103,20 @@ void inline motorCtrl_ISR(void){
   
 }
 
-void setup() {////////////////////////////////////////////////////////////////////////
-  Serial.begin(115200);
-  scanner.attach(scannerPin);  
-  motorL.attach(motlpin);
-  motorR.attach(motrpin);
-  Rudder.attach(rudderpin);
-  motor.attach(motpin);
+void setup() {///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  Serial.begin(115200);        //start serial
+  scanner.attach(scannerPin);  //attach scanner servo
+  motorL.attach(motlpin);      //attach left motor
+  motorR.attach(motrpin);      //attach right motor
+  Rudder.attach(rudderpin);    //attach rudder servo
+  motor.attach(motpin);        //attach centre motor
   
-  pinMode(RCrudpin, INPUT);
-  pinMode(RCmotpin, INPUT);
+  pinMode(RCrudpin, INPUT);    //setup rudder PWM servo input
+  pinMode(RCmotpin, INPUT);    //setup throttle PWM servo input
 ;
-  delay(1000);  
-  
+  delay(1000);
+    
+  // setup i2c
   Wire.begin(D3, D4); //SDA, 
   Wire.setClock(400000); // use 400 kHz I2C
 
@@ -124,6 +139,9 @@ void setup() {//////////////////////////////////////////////////////////////////
   sensor.setMeasurementTimingBudget(35000); //35ms
   sensor.startContinuous(35);   
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 void LeftMove(int speed, bool dir)
 {
@@ -132,9 +150,9 @@ LDir = dir;
     Lescs =   (speed);
   else
     Lescs =   (-speed); 
-
-
 }
+
+
 
 void RightMove(int speed, bool dir)
 {
@@ -146,39 +164,25 @@ LDir = dir;
 }
 
 
+
 void turnRight()
 {
-  Rescs = 50;
-  Lescs = 100;  
+  Rescs = 100;
+  Lescs = 500;  
   delay(1000);  
 }
+
 
 void turnLeft()
 {
-  Rescs = 100;
-  Lescs = 50;
+  Rescs = 500;
+  Lescs = 100;
   delay(1000);  
 }
 
-void loop() { 
-  pos += dir;
-  scanner.write(pos*stepAng);
-    
-  val = sensor.read();
-  if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
-
-  distances[pos] = 0.3*distances[pos] + 0.7*val;
-  
-  if (pos == numStep)
-  {
-    dir = -1;
-  }
-  else if (pos == 0)
-  {
-    dir = 1;
-  }
-
-  // find the left and right average sum
+void averagesum()
+{
+    // find the left and right average sum
   if (pos > (numStep/2))
     leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep; 
   else if (pos < (numStep/2))
@@ -186,23 +190,32 @@ void loop() {
 
   // find the front average sum
   if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
-    frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep;  
+    frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep; 
+  
+}
 
+void RCinput()
+{
 RCThr = pulseIn(RCmotpin, HIGH);
-RCRud = pulseIn(RCrudpin, HIGH);    
+RCRud = pulseIn(RCrudpin, HIGH); 
+}
 
+void mixing(){
  Lesc = map (Lescs, 100, 700, 900, 2100);
  Resc = map (Rescs, 100, 700, 900, 2100);
  rmix = ((RCThr + RCRud)/2);
  lmix = ((1500 + (RCThr - RCRud)));
  rout = ((rmix + Resc)/2);
  lout = ((lmix + Lesc)/2);
+ 
+ rudders = ((Lesc + RCRud)/2);
 
-  rudders = ((Lesc + RCRud)/2);
+ if (lout > rout){   out = rout;}
+ else { out = rout;}
+}
 
-if (lout > rout){   out = rout;}
-else { out = rout;}
-
+void output()
+{
 if (RCThr < 700){
   motorL.writeMicroseconds(1500);
   motorR.writeMicroseconds(1500);
@@ -227,3 +240,30 @@ else {
   Serial.println(rout);
 }
 }
+
+
+void loop() { ////////////////////////////////////////////////////////////////////////////////////////
+  pos += dir;
+  scanner.write(pos*stepAng);
+    
+  val = sensor.read();
+  if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
+
+  distances[pos] = 0.3*distances[pos] + 0.7*val;
+  
+  if (pos == numStep)
+  {
+    dir = -1;
+  }
+  else if (pos == 0)
+  {
+    dir = 1;
+  }
+
+ 
+void averagesum();
+void RCinput();
+void mixing();
+void output();  
+
+}/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
