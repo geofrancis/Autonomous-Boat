@@ -149,15 +149,15 @@ LDir = dir;
 void turnRight()
 {
   Rescs = 50;
-  Lescs = 100;
-  esc = 50;
+  Lescs = 100;  
+  delay(1000);  
 }
 
 void turnLeft()
 {
   Rescs = 100;
   Lescs = 50;
-  esc = 1000;
+  delay(1000);  
 }
 
 void loop() { 
