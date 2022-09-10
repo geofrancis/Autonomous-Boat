@@ -14,7 +14,7 @@
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
 
-#define rudderpin D1        // GIO2 = D4
+#define rudederpin D1        // GIO2 = D4
 #define servoPin D2        // GIO2 = D4
 #define motrpin D5        // GIO2 = D4
 #define motlpin D6        // GIO2 = D4
@@ -100,7 +100,7 @@ void setup() {//////////////////////////////////////////////////////////////////
   myservo.attach(servoPin);  
   motorL.attach(motlpin);
   motorR.attach(motrpin);
-  Rudder.attach(rudderpin);
+  Rudder.attach(rudederpin);
   motor.attach(motpin);
   
   pinMode(rudpin, INPUT);
@@ -197,8 +197,8 @@ void loop() {
 RCThr = pulseIn(motpin, HIGH);
 RCRud = pulseIn(rudpin, HIGH);    
 
- Lesc = map (Lescs, 100, 700, 800, 2100);
- Resc = map (Rescs, 100, 700, 800, 2100);
+ Lesc = map (Lescs, 100, 700, 900, 2100);
+ Resc = map (Rescs, 100, 700, 900, 2100);
  rmix = ((RCThr + RCRud)/2);
  lmix = ((1500 + (RCThr - RCRud)));
  rout = ((rmix + Resc)/2);
@@ -208,18 +208,19 @@ RCRud = pulseIn(rudpin, HIGH);
 
 if (lout > rout){   out = rout;}
 else { out = rout;}
+
+if (RCThr < 700){
+  motorL.writeMicroseconds(1500);
+  motorR.writeMicroseconds(1500);
+  Rudder.writeMicroseconds(1500);
+  Serial.println(" RCThr us ");
+  Serial.println(RCThr);
+}
+else {
   motorL.writeMicroseconds(lout);
   motorR.writeMicroseconds(rout);
   Rudder.writeMicroseconds(rudders);
- 
-Serial.println(" RCThr us ");
-Serial.println(RCThr);
-
-
-Serial.println(" Rmotor us ");
-Serial.println(rout);
-
-
-Serial.println(" lidar ");
-Serial.println(val);
+  Serial.println(" rudder us ");
+  Serial.println(rudders);
+}
 }
