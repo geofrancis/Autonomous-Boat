@@ -14,7 +14,7 @@
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
 
-#define rudederpin D1        // GIO2 = D4
+#define rudderpin D1        // GIO2 = D4
 #define servoPin D2        // GIO2 = D4
 #define motrpin D5        // GIO2 = D4
 #define motlpin D6        // GIO2 = D4
@@ -100,7 +100,7 @@ void setup() {//////////////////////////////////////////////////////////////////
   myservo.attach(servoPin);  
   motorL.attach(motlpin);
   motorR.attach(motrpin);
-  Rudder.attach(rudederpin);
+  Rudder.attach(rudderpin);
   motor.attach(motpin);
   
   pinMode(rudpin, INPUT);
