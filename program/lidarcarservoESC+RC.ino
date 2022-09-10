@@ -6,21 +6,23 @@
   Date: 9 Oct 2019
   *** you may need to disconnect the motor control pins before uploading the sketch ***
 */
-
+//defines/////////////////////////////////////////////////////////////////////
 #include <Wire.h>
 #include <VL53L1X.h>
 #include <Servo.h>
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
-#define rudederpin D1     
+#define CtrlIntv  100000        // this gives 0.05 sec or 50ms  // sampling interval for the motor control @80MHz
+#define MinDistance 100     // 100mm
+
+#define rudderpin D1     
 #define scannerPin D2       
 #define motrpin D5        
 #define motlpin D6       
 #define motpin D0        
-#define motpin D7        
-#define rudpin D8      
-#define CtrlIntv  100000        // this gives 0.05 sec or 50ms  // sampling interval for the motor control @80MHz
-#define MinDistance 100     // 100mm
+#define RCmotpin D7        
+#define RCrudpin D8      
+
 
 Servo scanner;      // create servo object to control a servo
 Servo motorL;
@@ -92,11 +94,11 @@ void setup() {//////////////////////////////////////////////////////////////////
   scanner.attach(scannerPin);  
   motorL.attach(motlpin);
   motorR.attach(motrpin);
-  Rudder.attach(rudederpin);
+  Rudder.attach(rudderpin);
   motor.attach(motpin);
   
-  pinMode(rudpin, INPUT);
-  pinMode(motpin, INPUT);
+  pinMode(RCrudpin, INPUT);
+  pinMode(RCmotpin, INPUT);
 ;
   delay(1000);  
   
@@ -186,8 +188,8 @@ void loop() {
   if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
     frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep;  
 
-RCThr = pulseIn(motpin, HIGH);
-RCRud = pulseIn(rudpin, HIGH);    
+RCThr = pulseIn(RCmotpin, HIGH);
+RCRud = pulseIn(RCrudpin, HIGH);    
 
  Lesc = map (Lescs, 100, 700, 900, 2100);
  Resc = map (Rescs, 100, 700, 900, 2100);
@@ -214,6 +216,7 @@ else {
   motorR.writeMicroseconds(rout);
   motor.writeMicroseconds(out);
   Rudder.writeMicroseconds(rudders);
+  
   Serial.println(" rudder us ");
   Serial.println(rudders);
   Serial.println(" motor us ");
