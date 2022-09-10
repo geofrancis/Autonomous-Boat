@@ -204,6 +204,7 @@ else { out = rout;}
 if (RCThr < 700){
   motorL.writeMicroseconds(1500);
   motorR.writeMicroseconds(1500);
+  motor .writeMicroseconds(rout);
   Rudder.writeMicroseconds(1500);
   Serial.println(" throttle failsafe <700us ");
   Serial.println(RCThr);
@@ -211,8 +212,15 @@ if (RCThr < 700){
 else {
   motorL.writeMicroseconds(lout);
   motorR.writeMicroseconds(rout);
+  motor.writeMicroseconds(out);
   Rudder.writeMicroseconds(rudders);
   Serial.println(" rudder us ");
   Serial.println(rudders);
+  Serial.println(" motor us ");
+  Serial.println(out);
+   Serial.println(" motorL us ");
+  Serial.println(lout);
+   Serial.println(" motorR us ");
+  Serial.println(rout);
 }
 }
