@@ -4,8 +4,7 @@ This robot automatically avoid the obstracles and find the direction by using
   
 This version has been modified for a boat so it has:
 RC input for throttle and rudder, 
-outputs for left and right ESC or servo wheels 
-outputs for single throttle and rudder
+outputs for left and right ESC and outputs for single throttle and rudder
 
 
 servoPin D2     scanner servo
