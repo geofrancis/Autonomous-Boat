@@ -10,27 +10,19 @@
 #include <Wire.h>
 #include <VL53L1X.h>
 #include <Servo.h>
-
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
-
-#define rudederpin D1        // GIO2 = D4
-#define servoPin D2        // GIO2 = D4
-#define motrpin D5        // GIO2 = D4
-#define motlpin D6        // GIO2 = D4
-#define motpin D0        // GIO2 = D4
-
-#define motpin D7        // GIO2 = D4
-#define rudpin D8        // GIO2 = D4
-// motors control pins
-
-
-// sampling interval for the motor control @80MHz
-#define CtrlIntv  100000        // this gives 0.05 sec or 50ms
+#define rudederpin D1     
+#define scannerPin D2       
+#define motrpin D5        
+#define motlpin D6       
+#define motpin D0        
+#define motpin D7        
+#define rudpin D8      
+#define CtrlIntv  100000        // this gives 0.05 sec or 50ms  // sampling interval for the motor control @80MHz
 #define MinDistance 100     // 100mm
 
-Servo myservo;      // create servo object to control a servo
-
+Servo scanner;      // create servo object to control a servo
 Servo motorL;
 Servo motorR;
 Servo Rudder;
@@ -97,7 +89,7 @@ void inline motorCtrl_ISR(void){
 
 void setup() {////////////////////////////////////////////////////////////////////////
   Serial.begin(115200);
-  myservo.attach(servoPin);  
+  scanner.attach(scannerPin);  
   motorL.attach(motlpin);
   motorR.attach(motrpin);
   Rudder.attach(rudederpin);
@@ -168,7 +160,7 @@ void turnLeft()
 
 void loop() { 
   pos += dir;
-  myservo.write(pos*stepAng);
+  scanner.write(pos*stepAng);
     
   val = sensor.read();
   if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
@@ -213,7 +205,7 @@ if (RCThr < 700){
   motorL.writeMicroseconds(1500);
   motorR.writeMicroseconds(1500);
   Rudder.writeMicroseconds(1500);
-  Serial.println(" RCThr us ");
+  Serial.println(" throttle failsafe <700us ");
   Serial.println(RCThr);
 }
 else {
