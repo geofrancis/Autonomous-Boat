@@ -11,9 +11,11 @@ outputs for single throttle and rudder
 servoPin D2     scanner servo
 
 motpin D0       motor in   
+
 rudderpin D1    rudder in
       
 motrpin D5     right motor out 
+
 motlpin D6     left motor out
 
 motpin D7      motor out
