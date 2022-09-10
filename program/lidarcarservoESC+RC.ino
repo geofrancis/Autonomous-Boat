@@ -204,7 +204,7 @@ else { out = rout;}
 if (RCThr < 700){
   motorL.writeMicroseconds(1500);
   motorR.writeMicroseconds(1500);
-  motor .writeMicroseconds(rout);
+  motor .writeMicroseconds(1500);
   Rudder.writeMicroseconds(1500);
   Serial.println(" throttle failsafe <700us ");
   Serial.println(RCThr);
