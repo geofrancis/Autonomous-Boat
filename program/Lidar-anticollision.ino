@@ -1,11 +1,4 @@
-/* This robot automatically avoid the obstracles and find the direction by using
-  a LiDAR sensor sweeping in front of the robot. The speed of the wheels is
-  controled by the PWM signal using the analogWrite() function.
-  
-  Author: Udom
-  Date: 9 Oct 2019
-  *** you may need to disconnect the motor control pins before uploading the sketch ***
-*/
+
 //defines/////////////////////////////////////////////////////////////////////
 #include <Wire.h>
 #include <VL53L1X.h>
