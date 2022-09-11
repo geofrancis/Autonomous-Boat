@@ -106,7 +106,6 @@ void setup() {//////////////////////////////////////////////////////////////////
   
   pinMode(RCrudpin, INPUT);    //setup rudder PWM servo input
   pinMode(RCmotpin, INPUT);    //setup throttle PWM servo input
-;
   delay(1000);
     
   // setup i2c
