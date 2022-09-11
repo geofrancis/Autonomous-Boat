@@ -6,7 +6,7 @@
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
 #define CtrlIntv  100000        // this gives 0.05 sec or 50ms  // sampling interval for the motor control @80MHz
-#define MinDistance 100     // 100mm
+#define MinDistance 500     // 100mm
 
 //PWM outputs
 #define rudderpin D1     
