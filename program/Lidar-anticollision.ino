@@ -1,115 +1,114 @@
+/* This robot automatically avoid the obstracles and find the direction by using
+  a LiDAR sensor sweeping in front of the robot. The speed of the wheels is
+  controled by the PWM signal using the analogWrite() function.
+  
+  Author: Udom
+  Date: 9 Oct 2019
+  *** you may need to disconnect the motor control pins before uploading the sketch ***
+*/
 
-//defines/////////////////////////////////////////////////////////////////////
 #include <Wire.h>
 #include <VL53L1X.h>
 #include <Servo.h>
 #define stepAng  30       // step angle
 #define numStep 6        // = 180/stepAng 
-#define CtrlIntv  100000        // this gives 0.05 sec or 50ms  // sampling interval for the motor control @80MHz
-#define MinDistance 500     // 100mm
+#define CtrlIntv  4000000    // this gives 0.05 sec or 50ms
+#define TurnDelay 300       // turn for 300ms
+#define ReverseDistance 1000    
+#define AvoidDistance 3000     
+#define MINDistance 300     
 
-//PWM outputs
-#define rudderpin D1     
-#define scannerPin D2       
-#define motrpin D5        
-#define motlpin D6       
-#define motpin D0   
+#define scannerPin D0
+#define rudderpin D8     
+#define motpin D7
+       
+  
 //RC inputs     
-#define RCmotpin D7        
-#define RCrudpin D8      
+#define RCmotpin D1        
+#define RCrudpin D2     
+#define ENpin D3
 
 
-
-
-//initialise////////////////////////////////////////////////////////////////////
-
-//create lidar object
-VL53L1X sensor;
-
-//create servo objects.
 Servo scanner;     
-Servo motorL;
-Servo motorR;
 Servo Rudder;
 Servo motor;
 
 
-//rc inputs 
-int RCRud;
-int RCThr;
+VL53L1X sensor;
 
 //servo values
-int Lesc;
-int Resc;
+
+int RCRud;
+int RCThr;
+int ENABLE;
+
+
 int esc;
-int rudd;
-int LDir;  
-int LSpd; 
-int RSpd;
-int RDir; 
+int escs;
+int yaw;
+int out;
+int rudout;
+
 int lmix;
 int rmix;
-int Lescs;
-int Rescs;
-int escs;
-int rudders;
 
-//servo outputs us
-int lout;
-int rout;
-int out;
+const int numReadings = 12;
+int readings[numReadings];  // the readings from the analog input
+int readIndex = 0;          // the index of the current reading
+int total = 0;              // the running total
+int average = 0;            // the average
 
 
 
-//lidar values
+
+
 int pos = 0;          // servo position
 int dir = 1;          // servo moving direction: +1/-1
 int val;              // LiDAR measured value
+
 float distances[numStep+1]; // array for the distance at each angle, including at 0 and 180
 float leftSum, rightSum, frontSum;
 volatile unsigned long next;
 
-
-// software timer interrupt: counts clock cycles at 80MHz////////////////////////////////////////////////////////////////////////
+//=======================================================================
+// software timer interrupt: counts clock cycles at 80MHz
 void inline motorCtrl_ISR(void){
 
-//if distance is under critical distance execute hard left or right escape manouver.
-  if (frontSum < MinDistance)
-  {
-    if (leftSum < rightSum)
-      turnRight();     
-    else
-      turnLeft();
+RCThr = pulseIn(RCmotpin, HIGH);
+RCRud = pulseIn(RCrudpin, HIGH); 
+ENABLE = pulseIn(ENpin, HIGH);
+
+if (average < AvoidDistance)
+  { 
+    yaw = (int)((rightSum-leftSum)+1500); 
+  }
+  else {(yaw = RCRud);
+  }
+if (average < ReverseDistance)
+  {  
+    esc = map (average, ReverseDistance, MINDistance, 1500, 500);
+  }
+    else{
+      esc = RCThr;
   }          
-// if steer left or right based on the average of each side 
 
-  int lsp = (int)(1000*rightSum/(leftSum+rightSum));
-  int rsp = (int)(1000*leftSum/(leftSum+rightSum));
-
-  
-  
-  LeftMove(lsp, true);
-  RightMove(rsp, true); 
 
   next=ESP.getCycleCount()+CtrlIntv;
   timer0_write(next);
-  
 }
+//============================================================================================
+void setup() {
+  Serial.begin(115200);
 
-void setup() {///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  Serial.begin(115200);        //start serial
   scanner.attach(scannerPin);  //attach scanner servo
-  motorL.attach(motlpin);      //attach left motor
-  motorR.attach(motrpin);      //attach right motor
   Rudder.attach(rudderpin);    //attach rudder servo
   motor.attach(motpin);        //attach centre motor
   
   pinMode(RCrudpin, INPUT);    //setup rudder PWM servo input
   pinMode(RCmotpin, INPUT);    //setup throttle PWM servo input
-  delay(1000);
-    
-  // setup i2c
-  Wire.begin(D3, D4); //SDA, 
+  pinMode(ENABLE, INPUT);    //setup throttle PWM servo input
+  
+ Wire.begin(D5, D6); 
   Wire.setClock(400000); // use 400 kHz I2C
 
   //Initialize the timer
@@ -129,120 +128,35 @@ void setup() {//////////////////////////////////////////////////////////////////
 
   sensor.setDistanceMode(VL53L1X::Long);
   sensor.setMeasurementTimingBudget(35000); //35ms
-  sensor.startContinuous(35);   
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-void LeftMove(int speed, bool dir)
-{
-LDir = dir; 
-  if (dir = 1)
-    Lescs =   (speed);
-  else
-    Lescs =   (-speed); 
+  sensor.startContinuous(35);  
+   Serial.println(" setup ");
 }
 
 
 
-void RightMove(int speed, bool dir)
-{
-LDir = dir; 
-  if (dir = 1)
-    Rescs =   (speed);
-  else
-    Rescs = (-speed); 
-}
 
 
-
-void turnRight()
-{
-  Rescs = 100;
-  Lescs = 500;  
-  delay(1000);  
-}
-
-
-void turnLeft()
-{
-  Rescs = 500;
-  Lescs = 100;
-  delay(1000);  
-}
-
-void averagesum()
-{
-    // find the left and right average sum
-  if (pos > (numStep/2))
-    leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep; 
-  else if (pos < (numStep/2))
-    rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
-
-  // find the front average sum
-  if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
-    frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep; 
-  
-}
-
-void RCinput()
-{
-RCThr = pulseIn(RCmotpin, HIGH);
-RCRud = pulseIn(RCrudpin, HIGH); 
-}
-
-void mixing(){
- Lesc = map (Lescs, 100, 700, 900, 2100);
- Resc = map (Rescs, 100, 700, 900, 2100);
- rmix = ((RCThr + RCRud)/2);
- lmix = ((1500 + (RCThr - RCRud)));
- rout = ((rmix + Resc)/2);
- lout = ((lmix + Lesc)/2);
- 
- rudders = ((Lesc + RCRud)/2);
-
- if (lout > rout){   out = rout;}
- else { out = rout;}
-}
-
-void output()
-{
-if (RCThr < 700){
-  motorL.writeMicroseconds(1500);
-  motorR.writeMicroseconds(1500);
-  motor .writeMicroseconds(1500);
-  Rudder.writeMicroseconds(1500);
-  Serial.println(" throttle failsafe <700us ");
-  Serial.println(RCThr);
-}
-else {
-  motorL.writeMicroseconds(lout);
-  motorR.writeMicroseconds(rout);
-  motor.writeMicroseconds(out);
-  Rudder.writeMicroseconds(rudders);
-  
-  Serial.println(" rudder us ");
-  Serial.println(rudders);
-  Serial.println(" motor us ");
-  Serial.println(out);
-   Serial.println(" motorL us ");
-  Serial.println(lout);
-   Serial.println(" motorR us ");
-  Serial.println(rout);
-}
-}
-
-
-void loop() { ////////////////////////////////////////////////////////////////////////////////////////
+void loop() { 
   pos += dir;
   scanner.write(pos*stepAng);
-    
   val = sensor.read();
-  if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
-
-  distances[pos] = 0.3*distances[pos] + 0.7*val;
   
+  if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
+  distances[pos] = 0.3*distances[pos] + 0.7*val;
+  total = total - readings[readIndex];
+  readings[readIndex] = val;
+  total = total + readings[readIndex];
+  readIndex = readIndex + 1;
+  
+  if (readIndex >= numReadings) {
+    readIndex = 0;
+  }
+  
+ average = total / numReadings;
+ Serial.println(" average ");
+ Serial.println(average);
+
+      
   if (pos == numStep)
   {
     dir = -1;
@@ -253,9 +167,47 @@ void loop() { //////////////////////////////////////////////////////////////////
   }
 
  
-void averagesum();
-void RCinput();
-void mixing();
-void output();  
+   // find the left and right average sum
+  if (pos > (numStep/2))
+    leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep; 
+  else if (pos < (numStep/2))
+    rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
 
-}/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+  // find the front average sum
+  if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
+    frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep; 
+
+
+
+
+ out = ((esc + RCThr)/2);
+ rudout = ((yaw + RCRud)/2);
+
+ 
+ 
+/////////////////////////////////////////////////////////
+if (ENABLE <= 1500){
+out = RCThr;  
+}
+if (ENABLE <= 1500) {
+  rudout = RCRud;
+}
+/////////////////////////////////////////////////////////
+
+ rmix = ((out + rudout)/2);
+ lmix = ((1500 + (out - rudout)));
+
+ 
+ 
+if (RCThr < 700){
+  motor .writeMicroseconds(1500);
+  Rudder.writeMicroseconds(1500);
+}
+else {
+  motor.writeMicroseconds(lmix);
+  Rudder.writeMicroseconds(rmix);
+}
+
+}
