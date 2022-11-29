@@ -71,8 +71,25 @@ int total = 0;              // the running total
 int average = 0;            // the average
 
 
-int Awinch;
-int Twinch;
+#define manouverDistance    3000
+#define avoiddistance       1000 
+#define minreversedistance  1000
+#define fullreversedistance  300 
+#define followdistance       300 
+
+int maxthrottle;
+int minthrottle;
+
+int mindistance; 
+int closest;
+int avoiddirection;
+int avoidturn;
+
+int followturn;
+
+int leftwallaverage;
+int rightwallaverage;
+int wallsteer;
 
 
 int pos = 0;          // servo position
@@ -88,20 +105,68 @@ volatile unsigned long next;
 void inline motorCtrl_ISR(void){
 
 
-
-if (average < AvoidDistance)
+// AVERAGE LEFT + RIGHT----------------------------------------------
+    if (average < AvoidDistance)
   { 
     yaw = (int)((rightsumscaled-leftsumscaled)+1500); 
   }
   else {(yaw = RCRud);
   }
-if (average < ReverseDistance)
+// AVERAGE THROTTLE AVOID-----------------------------------------------
+    if (average < ReverseDistance)
   {  
     esc = map (average, ReverseDistance, MINDistance, 1500, 500);
   }
     else{
       esc = RCThr;
   }          
+//SELECT TURN DIRECTION AND SCALE YAW -----------------------------------
+    if (avoiddirection < 5){
+      avoidturn =0;
+    }
+    else avoidturn = 1;
+  
+  if (avoidturn = 0) {
+       yaw = map (avoiddirection, 0, 4, 1500, 1000);}
+  if (avoidturn = 1) 
+      {yaw = map (avoiddirection, 5, 10, 1500, 2000);}
+
+// AVERAGE DISTANCE THROTTLE LIMITER------------------------------
+if (average < manouverDistance) {  
+   minthrottle = map (average, fullreversedistance, manouverDistance, 1400, 1000);
+   maxthrottle = map (average, fullreversedistance, manouverDistance, 1600, 2000);
+}
+else{
+  minthrottle = 1000;
+  maxthrottle = 2000;
+}      
+
+
+//SCALE THROTTLE TO CLOSEST DISTANCE--------------------------------
+if (closest < minreversedistance) {  
+   esc = map (average, minreversedistance, fullreversedistance, 1500, 500);
+  }
+    else{
+   esc = RCThr;
+} 
+
+//SCALE YAW TO FOLLOW CLOSEST OBJECT----------------------------------------------
+if (average < manouverDistance && average > avoiddistance){
+  if (avoidturn = 0) 
+        followturn = map (avoiddirection, 0, 9, 1500, 1700);}
+  else {followturn = map (avoiddirection, 10, 19, 1700, 1500);}        
+
+
+//SCALE YAW TO FOLLOW WALL----------------------------------------------------------
+if (leftwallaverage<=rightwallaverage){
+ wallsteer = map (leftwallaverage, 3, 2.5,  1400, 1600);
+}
+if (rightwallaverage<leftwallaverage){
+  wallsteer = map (rightwallaverage, 3, 2.5,  1600, 1400);
+}
+if (wallsteer > 1600){wallsteer = 1600;}
+if (wallsteer < 1400) {wallsteer = 1400;}
+
 
 
   next=ESP.getCycleCount()+CtrlIntv;
@@ -175,6 +240,8 @@ mcp.pinMode(16, INPUT_PULLUP);
 
 void loop() { 
 
+
+//READ RC CHANNELS------------------------------------
 ch1 = iBus.readChannel(0);
 ch2 = iBus.readChannel(1);
 ch3 = iBus.readChannel(2);
@@ -188,7 +255,7 @@ ch10 = iBus.readChannel(9);
 
 RCThr = ch1;
 RCRud = ch2; 
-//RCThr = pulseIn(RCmotpin, HIGH);
+//RCThr = pulseIn(RCmotpin, HIGH); use pwm input for flight controller
 //RCRud = pulseIn(RCrudpin, HIGH); 
 AVOIDMODE = ch3;
 
@@ -197,6 +264,7 @@ AVOIDMODE = ch3;
   val = sensor.read();
   
   if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
+  
   distances[pos] = 0.3*distances[pos] + 0.7*val;
   total = total - readings[readIndex];
   readings[readIndex] = val;
@@ -206,12 +274,11 @@ AVOIDMODE = ch3;
   if (readIndex >= numReadings) {
     readIndex = 0;
   }
+
   
  average = total / numReadings;
- //Serial.println(" average ");
-// Serial.println(average);
 
-      
+  //change servo direction-----------------    
   if (pos == numStep)
   {
     dir = -1;
@@ -221,24 +288,34 @@ AVOIDMODE = ch3;
     dir = 1;
   }
 
- 
+////////////////////////////////////////////////////////////// 
    // find the left and right average sum
   if (pos > (numStep/2))
     leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep; 
   else if (pos < (numStep/2))
     rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
 
+
     leftsumscaled = map (leftSum, 0, 1300, 0, 2000);
    rightsumscaled = map (rightSum, 0, 1300, 0, 2000);
-  // find the front average sum
+
+   
+// find the front average sum-------------------------------------------------
   if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
     frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep; 
+    
+//find closest object--------------------------------------------------------
+  if (distances[pos] < closest){
+  closest = (distances[pos]);
+  avoiddirection = pos;
+}
+  if (distances[avoiddirection] > closest){
+    closest = (distances[pos]);
 
-
-
+}
  
  
-/////////////////////////////////////////////////////////
+//MODE SELECTION/////////////////////////////////////////////////////////
 
 
 
@@ -265,16 +342,18 @@ rudout = ((yaw + RCRud)/2);
 //wall following
 if (AVOIDMODE > 1601 && AVOIDMODE < 1800) {
 out = ((esc + RCThr)/2);
-
+rudout = ((yaw + RCRud + wallsteer)/3);
 }  
+
 //object following
 if (AVOIDMODE > 1801 && AVOIDMODE < 2000) {
-
+out = ((esc + RCThr)/2);
+rudout = ((yaw + RCRud + followturn)/3);
 }  
 if (AVOIDMODE >= 2000) {
 
 }
-/////////////////////////////////////////////////////////
+//OUTPUT///////////////////////////////////////////////////////
 
  rmix = ((out + rudout)/2);
  lmix = ((1500 + (out - rudout)));
