@@ -316,7 +316,11 @@ AVOIDMODE = ch3;
     closest = (distances[pos]);
 
 }
- 
+
+//track distance to wall-----------------------------------------------------
+
+leftwallaverage = ((distances[0]+distances[1])/2);
+rightwallaverage = ((distances[9]+distances[8])/2);
  
 //MODE SELECTION/////////////////////////////////////////////////////////
 
