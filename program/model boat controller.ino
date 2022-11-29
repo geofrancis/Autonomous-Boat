@@ -79,7 +79,7 @@ int average = 0;            // the average
 
 int maxthrottle;
 int minthrottle;
-
+int averagescale;
 int mindistance; 
 int closest;
 int avoiddirection;
@@ -112,6 +112,9 @@ void inline motorCtrl_ISR(void){
   }
   else {(yaw = RCRud);
   }
+  averagescale = (manouverDistance-average);
+
+  
 // AVERAGE THROTTLE AVOID-----------------------------------------------
     if (average < ReverseDistance)
   {  
@@ -296,8 +299,8 @@ AVOIDMODE = ch3;
     rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
 
 
-    leftsumscaled = map (leftSum, 0, 1300, 0, 2000);
-   rightsumscaled = map (rightSum, 0, 1300, 0, 2000);
+    leftsumscaled = (leftSum + averagescale);
+   rightsumscaled = (rightSum + averagescale);
 
    
 // find the front average sum-------------------------------------------------
