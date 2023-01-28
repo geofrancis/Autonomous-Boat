@@ -335,11 +335,11 @@ rudout = ((yaw + RCRud)/2);
 //}
 //OUTPUT///////////////////////////////////////////////////////
  
-if (out >1500){
- rudmix = (rudout);}
- else{
-  rudmix = (1500 - rudout + 1500);
- }
+//if (out >1500){
+// rudmix = (rudout);}
+// else{
+//  rudmix = (1500 - rudout + 1500);
+// }
 
  
 MOTORout.writeMicroseconds(out);
