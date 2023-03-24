@@ -251,12 +251,7 @@ static bool toggle0 = false;
     }
         digitalWrite(ledPin, ledState);
   }
-
-   if (!sensor.dataReady()) //If a reading is ready then take it
-  {
-    Serial.print("Sensor FAULT");
-    val=1;
-  }
+  
 
 }
 
