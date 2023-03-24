@@ -158,8 +158,6 @@ const long interval = 1000;
 
 
 
-
-
 //=======================================================================
 
 void setup() {
@@ -188,6 +186,10 @@ ESP32_ISR_Servos.useTimer(USE_ESP32_TIMER_NO);
   sensor.setMeasurementTimingBudget(35000); //35ms
   sensor.startContinuous(35);
  }
+
+
+
+ 
 }
 
 
@@ -207,38 +209,55 @@ serialprint();
 
   
 
-//Measure distance--------------------------------------------
+/////////////////////////////////////////////////////////////////Measure distance+ move servo
 
 
 void getReading(){
-  
-  if (sensor.dataReady()) //If a reading is ready then take it
-  {
+  if (sensor.dataReady())  {
   val = sensor.read();
   pos += dir;
   ESP32_ISR_Servos.setPosition(scanner,(pos*stepAng));
   distances[pos] = val;
-  total = total - readings[readIndex];
-  readings[readIndex] = val;
-  total = total + readings[readIndex];
-  readIndex = readIndex + 1;
-  
-  if (readIndex >= numReadings) {
-    readIndex = 0;
-  }
-  
- average = total / numReadings;
-
-  
   if (pos == numStep)
   {
     dir = -1;
   }
+  
   else if (pos == 0)
   {
     dir = 1;
   }
 
+////////////////////////////////////////LEFT RIGHT AVERAGE        
+   // find the left and right average sum
+  if (pos > (numStep/2))
+  rightSum = ((rightSum + distances[pos])/2);
+   //rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
+   else if (pos < (numStep/2))
+   leftSum = ((leftSum + distances[pos])/2);
+  // leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep;
+
+   
+ turnmulti = map (MULTI, 1000, 2000, 0.1, 10);
+ leftsumscaled = (leftSum*turnmulti);
+ rightsumscaled = (rightSum*turnmulti);
+  
+
+//////////////////////////////////////////FIND TOTAL AVERAGE///////////
+  total = total - readings[readIndex];
+  readings[readIndex] = val;
+  total = total + readings[readIndex];
+  readIndex = readIndex + 1;
+  if (readIndex >= numReadings) {
+    readIndex = 0;
+  }  
+ average = total / numReadings;
+
+ //////////////////////////////////////////FIND CLOSEST OBJECT////
+
+
+
+  /////////////////////////////////////////LED//
 static bool toggle0 = false;
     // if the LED is off turn it on and vice-versa:
     if (ledState == LOW) {
@@ -247,17 +266,10 @@ static bool toggle0 = false;
       ledState = LOW;
     }
         digitalWrite(ledPin, ledState);
-  }
-
+}
   
 
 }
-
-
-
-  
-
-
 
 
   
@@ -422,20 +434,12 @@ if (avoidmode == 7) {
 /////////////////////////////////////////////////CONTROL MODES///////
 void controlmodes(){
 
-   // find the left and right average sum
-  if (pos > (numStep/2))
-   rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
-   else if (pos < (numStep/2))
-  leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep;
-
-   
- turnmulti = map (MULTI, 1000, 2000, 1, 6);
- leftsumscaled = (leftSum*turnmulti);
- rightsumscaled = (rightSum*turnmulti);
-
+  
 
 // AVOID AVERAGE LEFT + RIGHT----------------------------------------------
-if (yawsmoothen = 1)
+   // find the left and right average sum
+ 
+if (yawsmoothen == 1)
   { 
     if (average < turnrange)
   { 
@@ -452,7 +456,7 @@ if (yawsmoothen = 1)
   }
 // AVERAGE THROTTLE AVOID-----------------------------------------------
 
-if (escsmoothen = 1)
+if (escsmoothen == 1)
   {
     average = total / numReadings;
     if (average < minreverse)
@@ -471,19 +475,19 @@ if (escsmoothen = 1)
   }
 //AVOID POINT DIRECTION  -----------------------------------
 
-if (pointyawen = 1)
+if (pointyawen == 1)
   {
   if (average < turnrange)
   {  
-   if (avoiddirection < 5){
+   if (avoiddirection < numStep/2){
       avoidturn =0;
     }
     else avoidturn = 1;
-    
-  if (avoidturn = 0) {
-       pointyaw = map (avoiddirection, 0, 4, 1500, 1000);}
+      
+   if (avoidturn = 0) {
+       pointyaw = map (avoiddirection, 0, (numStep/2), 1500, 1000);}
   if (avoidturn = 1) 
-      {pointyaw = map (avoiddirection, 5, 10, 1500, 2000);}
+      {pointyaw = map (avoiddirection, (numStep/2), (numStep), 1500, 2000);}
   }
     else{
       pointyaw = RCRud;
@@ -491,7 +495,7 @@ if (pointyawen = 1)
 
   }   
 // POINT THROTTLE AVOID-----------------------------------------------
- if (pointescen = 1)
+ if (pointescen == 1)
   {
  if (closest < minreverse)
   {  
@@ -504,18 +508,18 @@ if (pointyawen = 1)
 
 //POINT YAW TO FOLLOW CLOSEST OBJECT----------------------------------------------
 
-if (pointyawen = 1)
+if (pointyawen == 1)
   {
 if (average < turnrange){
 if (avoidturn = 0) 
-   followturn = map (avoiddirection, 0, 9, 1500, 1700);}
-  else {followturn = map (avoiddirection, 10, 19, 1700, 1500);}       
+   followturn = map (avoiddirection, 0, (numStep/2), 1500, 1700);}
+  else {followturn = map (avoiddirection, (numStep/2), numStep, 1700, 1500);}       
   }
 
 
 //AVERAGE YAW TO FOLLOW -----------------------------------------------------
 
-if (followturnen = 1)
+if (followturnen == 1)
   {
  if (average < turnrange)
   { 
@@ -532,7 +536,7 @@ if (followturnen = 1)
   
 //SCALE YAW TO FOLLOW WALL----------------------------------------------------------
 
-if ( wallsteeren = 1);
+if ( wallsteeren == 1);
 {
 if (leftwallaverage<=rightwallaverage){
 wallsteer = map (leftsumscaled, 2000, 1500,  1400, 1600);
@@ -580,13 +584,13 @@ void serialprint (){
 
 
 Serial.print("Direction: ");
-        Serial.print(dir);
+        Serial.print(pos*stepAng);
         Serial.print("\t  range: ");
         Serial.print(val);
-        Serial.print("\t  rightsumscaled: ");
-        Serial.print(rightsumscaled);
-        Serial.print("\t  leftsumscaled: ");
-        Serial.print(leftsumscaled);
+        Serial.print("\t  rightsum: ");
+        Serial.print(rightSum);
+        Serial.print("\t  leftsum: ");
+        Serial.print(leftSum);
         Serial.print("\t  average: ");
         Serial.print(average);
         Serial.print("\t  ch10 ");
