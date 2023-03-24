@@ -1,33 +1,32 @@
 #include <Wire.h>
+
+#define stepAng           10      // step angle
+#define numStep           18        // = 180/stepAng 
+#define MIN_MICROS        1000  
+#define MAX_MICROS        2000
+
+#define minreverse         500    
+#define fullreverse        150  
+
+#define turnrange         3000
+
+#define SERVOLIDAR           9
+#define MOTOR               40     
+#define RUDDER              38
+#define MODE                36
+#define PUMP                39
+
+
+
 #include <VL53L1X.h>
-#define stepAng  18      // step angle
-#define numStep 10        // = 180/stepAng 
-#define TIMER0_INTERVAL_MS        50
-#define MIN_MICROS      1000  
-#define MAX_MICROS      2000
-
-#define minreverse    500    
-#define fullreverse    150  
-
-#define turnrange    3000
-
-
-
-#define SERVOLIDAR 9
-#define MOTOR 40     
-#define RUDDER 38
-#define MODE 36
-#define PUMP 39
-
-
-
-
 VL53L1X sensor;
 
-#include "TimerInterrupt_Generic.h"
-ESP32Timer ITimer1(1);
+//#include "TimerInterrupt_Generic.h"
+//ESP32Timer ITimer1(1);
+//#define TIMER0_INTERVAL_MS        50
+//#define TIMER_INTERRUPT_DEBUG       0
 
-#define TIMER_INTERRUPT_DEBUG       0
+
 #define ISR_SERVO_DEBUG             0
 #define USE_ESP32_TIMER_NO          2
 #include "ESP32_S2_ISR_Servo.h"
@@ -70,6 +69,10 @@ int ch7 = 1500;  //bilge pump / fire monitor
 int ch8 = 1500;  //flight mode
 int ch9 = 1500;  //avoid gain
 int ch10 = 1350; //avoid mode
+int ch11 = 1350; //avoid mode
+int ch12 = 1350; //avoid mode
+int ch13 = 1350; //avoid mode
+int ch14 = 1350; //avoid mode
 
 
 uint32_t scanner  = -1;
@@ -132,7 +135,7 @@ int wallsteer;
 int pos = 0;          // servo position
 int dir = 1;          // servo moving direction: +1/-1
 int val;              // LiDAR measured value
-
+int range;
 float distances[numStep+1]; // array for the distance at each angle, including at 0 and 180
 float leftSum, rightSum, frontSum, leftsumscaled, rightsumscaled;
 volatile unsigned long next;
@@ -147,10 +150,76 @@ const long interval = 1000;
 
 
 
-bool IRAM_ATTR TimerHandler0(void * timerNo)
-{
+//bool IRAM_ATTR TimerHandler0(void * timerNo)
+//{
+ 
+
+
+//  return true;
+//}
+
+
+
+
+
+//=======================================================================
+
+void setup() {
+
+Serial.begin(115200);
+Wire.begin(33, 35);
+IBus.begin(Serial1, IBUSBM_NOTIMER);
+pinMode(LED_BUILTIN, OUTPUT);
+
+//if (ITimer1.attachInterruptInterval(TIMER0_INTERVAL_MS * 1000, TimerHandler0))
+
+ESP32_ISR_Servos.useTimer(USE_ESP32_TIMER_NO);
+ scanner = ESP32_ISR_Servos.setupServo(SERVOLIDAR, 500, 2500);
+  MOTORout = ESP32_ISR_Servos.setupServo(MOTOR, MIN_MICROS, MAX_MICROS);
+  RUDDERout = ESP32_ISR_Servos.setupServo(RUDDER, MIN_MICROS, MAX_MICROS);
+  modeout = ESP32_ISR_Servos.setupServo(MODE, MIN_MICROS, MAX_MICROS);
+  pumpout = ESP32_ISR_Servos.setupServo(PUMP, MIN_MICROS, MAX_MICROS);
+
+  
+  sensor.setTimeout(100);
+  if (!sensor.init()){val = 1;}
+  if (sensor.init()){
+
+
+  sensor.setDistanceMode(VL53L1X::Long);
+  sensor.setMeasurementTimingBudget(35000); //35ms
+  sensor.startContinuous(35);
+ }
+}
+
+
+
+void loop() { 
+
+getReading();
+readrc();
+modeselect();
+avoidmodes();
+controlmodes();
+servooutput();
+gpio();
+serialprint();
+
+}
+
+  
+
+//Measure distance--------------------------------------------
+
+
+void getReading(){
+  
+  if (sensor.dataReady()) //If a reading is ready then take it
+  {
+  range = sensor.read();
+  val = range;
   pos += dir;
-   ESP32_ISR_Servos.setPosition(scanner,(pos*stepAng));
+  ESP32_ISR_Servos.setPosition(scanner,(pos*stepAng));
   distances[pos] = val;
   total = total - readings[readIndex];
   readings[readIndex] = val;
@@ -181,67 +250,21 @@ static bool toggle0 = false;
       ledState = LOW;
     }
         digitalWrite(ledPin, ledState);
+  }
 
-
-  return true;
-}
-
-
-
-
-
-//=======================================================================
-
-void setup() {
-
- Serial.begin(115200);
-Wire.begin(33, 35);
- //Serial1.begin(115200, SERIAL_8N1, 11, 12);
-    IBus.begin(Serial1, IBUSBM_NOTIMER);
- pinMode(LED_BUILTIN, OUTPUT);
-
-if (ITimer1.attachInterruptInterval(TIMER0_INTERVAL_MS * 1000, TimerHandler0))
-
-ESP32_ISR_Servos.useTimer(USE_ESP32_TIMER_NO);
- scanner = ESP32_ISR_Servos.setupServo(SERVOLIDAR, 500, 2500);
-  MOTORout = ESP32_ISR_Servos.setupServo(MOTOR, MIN_MICROS, MAX_MICROS);
-  RUDDERout = ESP32_ISR_Servos.setupServo(RUDDER, MIN_MICROS, MAX_MICROS);
-  modeout = ESP32_ISR_Servos.setupServo(MODE, MIN_MICROS, MAX_MICROS);
-  pumpout = ESP32_ISR_Servos.setupServo(PUMP, MIN_MICROS, MAX_MICROS);
-
-  
-  sensor.setTimeout(100);
-  if (!sensor.init()){val = 1;}
-  if (sensor.init()){
-  sensor.setDistanceMode(VL53L1X::Long);
-  sensor.setMeasurementTimingBudget(35000); //35ms
-  sensor.startContinuous(35);
- }
-}
-
-
-
-void loop() { 
-
-readsensor();
-readrc();
-modeselect();
-avoidmodes();
-controlmodes();
-servooutput();
-gpio();
-serialprint();
+   if (!sensor.dataReady()) //If a reading is ready then take it
+  {
+    Serial.print("Sensor FAULT");
+    val=1;
+  }
 
 }
+
+
 
   
 
-//Measure distance--------------------------------------------
-void readsensor(){
 
-val = sensor.read();
-  if (sensor.timeoutOccurred()) { val = 2; }
-}
 
 
   
@@ -258,6 +281,10 @@ ch7 = IBus.readChannel(6);
 ch8 = IBus.readChannel(7);
 ch9 = IBus.readChannel(8);
 ch10 = IBus.readChannel(9);
+ch11 = IBus.readChannel(9);
+ch12 = IBus.readChannel(9);
+ch13 = IBus.readChannel(9);
+ch14 = IBus.readChannel(9);
 
    
 RCThr = ch1;
