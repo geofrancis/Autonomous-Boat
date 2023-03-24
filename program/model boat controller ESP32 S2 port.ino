@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include <VL53L1X.h>
-#define stepAng  10      // step angle
-#define numStep 18        // = 180/stepAng 
+#define stepAng  18      // step angle
+#define numStep 10        // = 180/stepAng 
 #define TIMER0_INTERVAL_MS        50
 #define MIN_MICROS      1000  
 #define MAX_MICROS      2000
@@ -69,7 +69,7 @@ int ch6 = 1500;  //tow winch
 int ch7 = 1500;  //bilge pump / fire monitor
 int ch8 = 1500;  //flight mode
 int ch9 = 1500;  //avoid gain
-int ch10 = 1500; //avoid mode
+int ch10 = 1350; //avoid mode
 
 
 uint32_t scanner  = -1;
@@ -210,7 +210,7 @@ ESP32_ISR_Servos.useTimer(USE_ESP32_TIMER_NO);
   pumpout = ESP32_ISR_Servos.setupServo(PUMP, MIN_MICROS, MAX_MICROS);
 
   
-  sensor.setTimeout(50);
+  sensor.setTimeout(100);
   if (!sensor.init()){val = 1;}
   if (sensor.init()){
   sensor.setDistanceMode(VL53L1X::Long);
@@ -235,11 +235,6 @@ serialprint();
 }
 
   
-
-//unsigned long currentMillis = millis();
- // if (currentMillis - previousMillis >= interval) {
-//   save the last time you blinked the LED
-//    previousMillis = currentMillis;
 
 //Measure distance--------------------------------------------
 void readsensor(){
@@ -401,12 +396,25 @@ rudout = ((yaw + RCRud + followturn)/3);
 /////////////////////////////////////////////////CONTROL MODES///////
 void controlmodes(){
 
+   // find the left and right average sum
+  if (pos > (numStep/2))
+   rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
+   else if (pos < (numStep/2))
+  leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep;
 
-// AVERAGE LEFT + RIGHT----------------------------------------------
+   
+ turnmulti = map (MULTI, 1000, 2000, 1, 6);
+ leftsumscaled = (leftSum*turnmulti);
+ rightsumscaled = (rightSum*turnmulti);
+
+
+// AVOID AVERAGE LEFT + RIGHT----------------------------------------------
+if (yawsmoothen = 1)
+  { 
     if (average < turnrange)
   { 
     yaw = (int)((rightsumscaled-leftsumscaled)+1500); 
-     // yaw = (int)((rightSum-leftSum)+1500); 
+
   }
   else {(yaw = RCRud);
   }
@@ -414,60 +422,102 @@ void controlmodes(){
  for (int i=0; i < 40; i++) {
  yawsmooth = yawsmooth + yaw;
  }
- yawsmooth = yawsmooth/5;
-
-  
+ yawsmooth = yawsmooth/40;
+  }
 // AVERAGE THROTTLE AVOID-----------------------------------------------
+
+if (escsmoothen = 1)
+  {
+    average = total / numReadings;
     if (average < minreverse)
   {  
-    esc = map (average, minreverse, fullreverse, 1500, 500);
+    esc = map (average, minreverse, fullreverse, 1500, 900);
   }
     else{
       esc = RCThr;
-  }          
+        }          
 
  for (int i=0; i < 20; i++) {
- throttlesmooth = throttlesmooth + esc;
+ escsmooth = escsmooth + esc;
  }
- throttlesmooth = throttlesmooth/5;
+ escsmooth = escsmooth/20;
 
+  }
+//AVOID POINT DIRECTION  -----------------------------------
+
+if (pointyawen = 1)
+  {
+  if (average < turnrange)
+  {  
+   if (avoiddirection < 5){
+      avoidturn =0;
+    }
+    else avoidturn = 1;
+    
+  if (avoidturn = 0) {
+       pointyaw = map (avoiddirection, 0, 4, 1500, 1000);}
+  if (avoidturn = 1) 
+      {pointyaw = map (avoiddirection, 5, 10, 1500, 2000);}
+  }
+    else{
+      pointyaw = RCRud;
+        }
+
+  }   
+// POINT THROTTLE AVOID-----------------------------------------------
+ if (pointescen = 1)
+  {
+ if (closest < minreverse)
+  {  
+ pointesc = map (closest, minreverse, fullreverse, 1500, 900);
+  }
+    else{
+    esc = RCThr;
+        }          
+  }
+
+//POINT YAW TO FOLLOW CLOSEST OBJECT----------------------------------------------
+
+if (pointyawen = 1)
+  {
+if (average < turnrange){
+if (avoidturn = 0) 
+   followturn = map (avoiddirection, 0, 9, 1500, 1700);}
+  else {followturn = map (avoiddirection, 10, 19, 1700, 1500);}       
+  }
+
+
+//AVERAGE YAW TO FOLLOW -----------------------------------------------------
+
+if (followturnen = 1)
+  {
+ if (average < turnrange)
+  { 
+    yawfollow = (int)((leftsumscaled - rightsumscaled)+1500); 
+  }
+  else {(yawfollow = RCRud);
+  }
+ for (int i=0; i < 40; i++) {
+ yawsmooth = yawsmooth + yawfollow;
+ }
+ yawsmooth = yawsmooth/40;
+  }
 
   
+//SCALE YAW TO FOLLOW WALL----------------------------------------------------------
 
-/////////////////////////////////////////////////////////////////////////////
-   // find the left and right average sum
-  if (pos > (numStep/2))
-   rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
-  // leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep; //tank
-  else if (pos < (numStep/2))
-  leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep;
-  //rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep; //tank
-   
-   
- turnmulti = map (MULTI, 1000, 2000, 1, 6);
- leftsumscaled = (leftSum*turnmulti);
- rightsumscaled = (rightSum*turnmulti);
-
-   
-// find the front average sum-------------------------------------------------
-  if ((pos > (numStep/4)) && (pos < (numStep*3/4)))
-    frontSum = 0.3*frontSum + 1.4*distances[pos]/numStep; 
-    
-//find closest object--------------------------------------------------------
-  if (distances[pos] < closest){
-  closest = (distances[pos]);
-  avoiddirection = pos;
+if ( wallsteeren = 1);
+{
+if (leftwallaverage<=rightwallaverage){
+wallsteer = map (leftsumscaled, 2000, 1500,  1400, 1600);
 }
-  if (distances[avoiddirection] > closest){
-    closest = (distances[pos]);
-
+if (rightwallaverage<leftwallaverage){
+  wallsteer = map (rightsumscaled, 2000, 1500,  1600, 1400);
+}
+if (wallsteer > 1600){wallsteer = 1600;}
+if (wallsteer < 1400) {wallsteer = 1400;}
 }
 
-//track distance to wall-----------------------------------------------------
-
-leftwallaverage = ((distances[0]+distances[1])/2);
-rightwallaverage = ((distances[9]+distances[8])/2);
- 
 }
 
 
@@ -509,7 +559,7 @@ Serial.print("Direction: ");
         Serial.print("\t  average: ");
         Serial.print(average);
         Serial.print("\t  ch1: ");
-        Serial.print(ch1);
+        Serial.print(ch10);
         Serial.print("\t  avoidmode: ");
         Serial.print(avoidmode);
         Serial.print("\t  avoiddirection: ");
