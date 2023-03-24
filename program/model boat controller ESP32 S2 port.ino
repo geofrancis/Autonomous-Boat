@@ -35,14 +35,12 @@ VL53L1X sensor;
 IBusBM IBus;    // IBus object
 
 
-
-
 int oldval;
 int newval;
 int intval;
 int oltval;
 
-int avoidmode =0;
+int avoidmode = 0;
 int scanhold = 0;
 
 int yawsmoothen = 0;
@@ -96,7 +94,7 @@ int bilge;
 
 int RCRud = 1500;
 int RCThr = 1500;
-int AVOIDMODE = 900;
+int AVOIDMODE = 1500;
 int MULTI = 1500; 
 int flightmode;
 
@@ -216,8 +214,7 @@ void getReading(){
   
   if (sensor.dataReady()) //If a reading is ready then take it
   {
-  range = sensor.read();
-  val = range;
+  val = sensor.read();
   pos += dir;
   ESP32_ISR_Servos.setPosition(scanner,(pos*stepAng));
   distances[pos] = val;
@@ -251,6 +248,7 @@ static bool toggle0 = false;
     }
         digitalWrite(ledPin, ledState);
   }
+
   
 
 }
@@ -276,10 +274,10 @@ ch7 = IBus.readChannel(6);
 ch8 = IBus.readChannel(7);
 ch9 = IBus.readChannel(8);
 ch10 = IBus.readChannel(9);
-ch11 = IBus.readChannel(9);
-ch12 = IBus.readChannel(9);
-ch13 = IBus.readChannel(9);
-ch14 = IBus.readChannel(9);
+ch11 = IBus.readChannel(10);
+ch12 = IBus.readChannel(11);
+ch13 = IBus.readChannel(12);
+ch14 = IBus.readChannel(13);
 
    
 RCThr = ch1;
@@ -293,6 +291,8 @@ flightmode = ch8;
 
 //////////////////////////////////////////////////AVOID MODE SELECTION/////////
 void modeselect(){
+
+
 if (AVOIDMODE <= 1000) {avoidmode = 0;}
 if (AVOIDMODE > 1001 && AVOIDMODE < 1100) {avoidmode = 1;}
 if (AVOIDMODE > 1101 && AVOIDMODE < 1200) {avoidmode = 2;}
@@ -303,15 +303,16 @@ if (AVOIDMODE > 1501 && AVOIDMODE < 1600) {avoidmode = 6;}
 if (AVOIDMODE > 1601 && AVOIDMODE < 1700) {avoidmode = 7;}  
 if (AVOIDMODE > 1701 && AVOIDMODE < 1800) {avoidmode = 8;}  
 if (AVOIDMODE > 1801 && AVOIDMODE < 1900) {avoidmode = 9;}  
-if (AVOIDMODE > 1901 && AVOIDMODE < 2000) {avoidmode = 10;}
+if(AVOIDMODE > 1901 && AVOIDMODE < 2000) {avoidmode = 10;}
 if (AVOIDMODE >= 2000) {avoidmode = 11;}
+      
 
 }
 
 ///////////////////////////////////////////////////CONTROL MODE SELECTION////
 void avoidmodes(){
 
-if (avoidmode = 0) {
+ if (avoidmode == 0) {
   
  yawsmoothen = 0;
  escsmoothen = 0;
@@ -325,7 +326,7 @@ if (avoidmode = 0) {
 }
 
 //average steering only
-if (avoidmode = 1) {
+ if (avoidmode == 1) {
   
  yawsmoothen = 1;
  escsmoothen = 0;
@@ -338,7 +339,7 @@ if (avoidmode = 1) {
    out = RCThr;
 }
 //throttle
-if (avoidmode = 2) {
+if (avoidmode == 2) {
   
  yawsmoothen = 0;
  escsmoothen = 1;
@@ -351,7 +352,7 @@ if (avoidmode = 2) {
    rudout = RCRud;
 }  
 //steering and throttle
-if (avoidmode = 3) {
+if (avoidmode == 3) {
  yawsmoothen = 1;
  escsmoothen = 1;
  pointyawen = 0; 
@@ -361,9 +362,10 @@ if (avoidmode = 3) {
 
    out = ((escsmooth + RCThr)/2);
    rudout = ((yawsmooth + RCRud)/2);
+
 }  
 //point steering only
-if (avoidmode = 4) {
+if (avoidmode == 4) {
  yawsmoothen = 0;
  escsmoothen = 0;
  pointyawen = 1; 
@@ -375,7 +377,7 @@ if (avoidmode = 4) {
    out = RCThr;
 }
 //point throttle
-if (avoidmode = 5) {
+if (avoidmode == 5) {
  yawsmoothen = 0;
  escsmoothen = 0;
  pointyawen = 0; 
@@ -387,8 +389,10 @@ if (avoidmode = 5) {
    rudout = RCRud;
 }
 
+
+
 //wall following
-if (avoidmode = 6) {
+if (avoidmode == 6) {
  yawsmoothen = 0;
  escsmoothen = 1;
  pointyawen = 0; 
@@ -400,15 +404,15 @@ rudout = ((yaw + RCRud + wallsteer)/3);
 }  
 
 //object following
-if (avoidmode = 7) {
+if (avoidmode == 7) {
  yawsmoothen = 1;
  escsmoothen = 1;
  pointyawen = 0; 
  pointescen = 0;
  wallsteeren = 0;
  followturnen = 1;
-out = ((esc + RCThr)/2);
-rudout = ((yaw + RCRud + followturn)/3);
+ out = ((esc + RCThr)/2);
+ rudout = ((yaw + RCRud + followturn)/3);
 }  
 
 
@@ -441,10 +445,10 @@ if (yawsmoothen = 1)
   else {(yaw = RCRud);
   }
  
- for (int i=0; i < 40; i++) {
+ for (int i=0; i < 1; i++) {
  yawsmooth = yawsmooth + yaw;
  }
- yawsmooth = yawsmooth/40;
+ yawsmooth = yawsmooth/1;
   }
 // AVERAGE THROTTLE AVOID-----------------------------------------------
 
@@ -459,10 +463,10 @@ if (escsmoothen = 1)
       esc = RCThr;
         }          
 
- for (int i=0; i < 20; i++) {
+ for (int i=0; i < 1; i++) {
  escsmooth = escsmooth + esc;
  }
- escsmooth = escsmooth/20;
+ escsmooth = escsmooth/1;
 
   }
 //AVOID POINT DIRECTION  -----------------------------------
@@ -569,6 +573,11 @@ void gpio(){
 
 }
 void serialprint (){
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+
 
 Serial.print("Direction: ");
         Serial.print(dir);
@@ -580,12 +589,11 @@ Serial.print("Direction: ");
         Serial.print(leftsumscaled);
         Serial.print("\t  average: ");
         Serial.print(average);
-        Serial.print("\t  ch1: ");
+        Serial.print("\t  ch10 ");
         Serial.print(ch10);
         Serial.print("\t  avoidmode: ");
         Serial.print(avoidmode);
         Serial.print("\t  avoiddirection: ");
         Serial.println(avoiddirection);
-
-
+}
 }
