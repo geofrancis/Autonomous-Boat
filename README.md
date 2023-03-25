@@ -5,10 +5,10 @@ This robot automatically avoid the obstracles and find the direction by using
 This version has been modified for a boat so it has:
 RC input for throttle and rudder for use with an external flight controller
 Ibus RC input for RC and function control
-outputs for left and right ESC mixing and rudder
-MCP23017 16 pin gpio expander for IO
+IBUS RC output for connection to flight controller
+Ported to ESP32-S2 from ESP8266.
 
-
+https://youtu.be/HKAlPZj2agQ
   
 It has several modes, 
 
