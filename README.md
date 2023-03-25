@@ -3,10 +3,15 @@ This robot automatically avoid the obstracles and find the direction by using
   a LiDAR sensor sweeping in front of the Boat.
   
 This version has been modified for a boat so it has:
+
 RC input for throttle and rudder for use with an external flight controller
+
 Ibus RC input for RC and function control
+
 IBUS RC output for connection to flight controller
+
 Ported to ESP32-S2 from ESP8266.
+
 
   https://youtu.be/HKAlPZj2agQ
   
