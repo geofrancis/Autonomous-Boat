@@ -1,31 +1,26 @@
 #include <Wire.h>
 
 #define stepAng           10      // step angle
-#define numStep           18        // = 180/stepAng 
+#define numStep           18        // = 180/stepAng
+#define averagedivider    18
+ 
 #define MIN_MICROS        1000  
 #define MAX_MICROS        2000
 
 #define minreverse         500    
 #define fullreverse        150  
 
-#define turnrange         3000
+#define turnrange         2000
 
-#define SERVOLIDAR           9
-#define MOTOR               40     
-#define RUDDER              38
-#define MODE                36
-#define PUMP                39
-
+#define SERVOLIDAR           7
+#define MOTOR               6     
+#define RUDDER              2
+#define MODE                3
+#define PUMP                4
 
 
 #include <VL53L1X.h>
 VL53L1X sensor;
-
-//#include "TimerInterrupt_Generic.h"
-//ESP32Timer ITimer1(1);
-//#define TIMER0_INTERVAL_MS        50
-//#define TIMER_INTERRUPT_DEBUG       0
-
 
 #define ISR_SERVO_DEBUG             0
 #define USE_ESP32_TIMER_NO          2
@@ -74,9 +69,9 @@ int ch14 = 1350; //avoid mode
 
 
 uint32_t scanner  = -1;
-uint32_t MOTORout  = -1;
-uint32_t RUDDERout  = -1;
-uint32_t modeout  = -1;
+uint32_t MOTout  = -1;
+uint32_t RUDout  = -1;
+uint32_t MODout  = -1;
 uint32_t pumpout  = -1;
 
 
@@ -171,9 +166,9 @@ pinMode(LED_BUILTIN, OUTPUT);
 
 ESP32_ISR_Servos.useTimer(USE_ESP32_TIMER_NO);
  scanner = ESP32_ISR_Servos.setupServo(SERVOLIDAR, 500, 2500);
-  MOTORout = ESP32_ISR_Servos.setupServo(MOTOR, MIN_MICROS, MAX_MICROS);
-  RUDDERout = ESP32_ISR_Servos.setupServo(RUDDER, MIN_MICROS, MAX_MICROS);
-  modeout = ESP32_ISR_Servos.setupServo(MODE, MIN_MICROS, MAX_MICROS);
+  MOTout = ESP32_ISR_Servos.setupServo(MOTOR, MIN_MICROS, MAX_MICROS);
+  RUDout = ESP32_ISR_Servos.setupServo(RUDDER, MIN_MICROS, MAX_MICROS);
+  MODout = ESP32_ISR_Servos.setupServo(MODE, MIN_MICROS, MAX_MICROS);
   pumpout = ESP32_ISR_Servos.setupServo(PUMP, MIN_MICROS, MAX_MICROS);
 
   
@@ -229,16 +224,14 @@ void getReading(){
   }
 
 ////////////////////////////////////////LEFT RIGHT AVERAGE        
-   // find the left and right average sum
+   // find the left and right average 
   if (pos > (numStep/2))
-  rightSum = ((rightSum + distances[pos])/2);
-   //rightSum = 0.3*rightSum + 1.4*distances[pos]/numStep;
+  leftSum = (((averagedivider*leftSum) + distances[pos])/(averagedivider+1));
+  //rightSum = (((averagedivider*rightSum) + distances[pos])/(averagedivider+1));
    else if (pos < (numStep/2))
-   leftSum = ((leftSum + distances[pos])/2);
-  // leftSum = 0.3*leftSum + 1.4*distances[pos]/numStep;
-
-   
- turnmulti = map (MULTI, 1000, 2000, 0.1, 10);
+ //  leftSum = (((averagedivider*leftSum) + distances[pos])/(averagedivider+1));
+   rightSum = (((averagedivider*rightSum) + distances[pos])/(averagedivider+1));
+ turnmulti = map (MULTI, 1000, 2000, 1, 10);
  leftsumscaled = (leftSum*turnmulti);
  rightsumscaled = (rightSum*turnmulti);
   
@@ -448,11 +441,13 @@ if (yawsmoothen == 1)
   }
   else {(yaw = RCRud);
   }
+  
+
+if (yaw > 2000){yaw = 2000;}
+if (yaw < 1000) {yaw = 1000;}
+
+ yawsmooth = yaw;
  
- for (int i=0; i < 1; i++) {
- yawsmooth = yawsmooth + yaw;
- }
- yawsmooth = yawsmooth/1;
   }
 // AVERAGE THROTTLE AVOID-----------------------------------------------
 
@@ -465,13 +460,13 @@ if (escsmoothen == 1)
   }
     else{
       esc = RCThr;
-        }          
+        }  
+        
 
- for (int i=0; i < 1; i++) {
- escsmooth = escsmooth + esc;
- }
- escsmooth = escsmooth/1;
-
+if (esc > 2000){esc = 2000;}
+if (esc < 1000) {esc = 1000;}   
+  
+ escsmooth = esc;
   }
 //AVOID POINT DIRECTION  -----------------------------------
 
@@ -547,19 +542,19 @@ if (rightwallaverage<leftwallaverage){
 if (wallsteer > 1600){wallsteer = 1600;}
 if (wallsteer < 1400) {wallsteer = 1400;}
 }
-
 }
 
 
+
+
 void servooutput(){
-MOT = map(MOTORout, 1000, 2000, 0, 180);
-RUD = map(RUDDERout, 1000, 2000, 0, 180);
-MOD = map(modeout, 1000, 2000, 0, 180);
+MOT = map(out, 1000, 2000, 0, 180);
+RUD = map(rudout, 1000, 2000, 0, 180);
+MOD = map(flightmode, 1000, 2000, 0, 180);
 
-ESP32_ISR_Servos.setPosition(MOTORout,MOT);
-ESP32_ISR_Servos.setPosition(RUDDERout,RUD);
-ESP32_ISR_Servos.setPosition(modeout,MOD);
-
+ESP32_ISR_Servos.setPosition(MOTout,MOT);
+ESP32_ISR_Servos.setPosition(RUDout,RUD);
+ESP32_ISR_Servos.setPosition(MODout,MOD);
 }
 
 void gpio(){
@@ -583,18 +578,18 @@ void serialprint (){
     previousMillis = currentMillis;
 
 
-Serial.print("Direction: ");
-        Serial.print(pos*stepAng);
-        Serial.print("\t  range: ");
-        Serial.print(val);
-        Serial.print("\t  rightsum: ");
-        Serial.print(rightSum);
+Serial.print("RUD: ");
+        Serial.print(RUD);
+        Serial.print("\t  MOT: ");
+        Serial.print(MOT);
+        Serial.print("\t  rightsumscaled: ");
+        Serial.print(rightsumscaled);
         Serial.print("\t  leftsum: ");
         Serial.print(leftSum);
         Serial.print("\t  average: ");
         Serial.print(average);
-        Serial.print("\t  ch10 ");
-        Serial.print(ch10);
+        Serial.print("\t  turnmulti ");
+        Serial.print(turnmulti);
         Serial.print("\t  avoidmode: ");
         Serial.print(avoidmode);
         Serial.print("\t  avoiddirection: ");
