@@ -12,6 +12,10 @@ IBUS RC output for connection to flight controller
 
 Ported to ESP32-S2 from ESP8266.
 
+lidar new data is used as timer
+
+
+
 
   https://youtu.be/HKAlPZj2agQ
   
