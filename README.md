@@ -9,6 +9,9 @@ IBUS RC output for connection to flight controller
 Ported to ESP32-S2 from ESP8266.
 
   https://youtu.be/HKAlPZj2agQ
+  
+  
+  
 It has several modes, 
 
 avoidance Mode 1 averages the left and right readings and that is used to calculate the steering input along with a speed scaling factor ideal for avoiding large objects and walls or following a corrodor.
