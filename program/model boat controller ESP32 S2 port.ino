@@ -1,8 +1,12 @@
 #include <Wire.h>
+#include <Arduino.h>
+
+
+
 
 #define stepAng           10      // step angle
 #define numStep           18        // = 180/stepAng
-#define averagedivider    18
+#define averagedivider    2
  
 #define MIN_MICROS        1000  
 #define MAX_MICROS        2000
@@ -22,12 +26,31 @@
 #include <VL53L1X.h>
 VL53L1X sensor;
 
+
 #define ISR_SERVO_DEBUG             0
 #define USE_ESP32_TIMER_NO          2
 #include "ESP32_S2_ISR_Servo.h"
 
+
 #include <IBusBM.h>
 IBusBM IBus;    // IBus object
+
+
+#include <RecurringTask.h>
+#include <SoftwareSerial.h>
+SoftwareSerial SerialIBUS(0, 2); // RX, TX
+
+
+
+#include <PID_v1.h>
+double Setpoint, Input, Output;
+
+//Specify the links and initial tuning parameters
+double Kp=2, Ki=5, Kd=1;
+PID AVGYAWPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+
+
+
 
 
 int oldval;
@@ -130,7 +153,7 @@ int dir = 1;          // servo moving direction: +1/-1
 int val;              // LiDAR measured value
 int range;
 float distances[numStep+1]; // array for the distance at each angle, including at 0 and 180
-float leftSum, rightSum, frontSum, leftsumscaled, rightsumscaled;
+float leftSum, rightSum, frontleftSum, frontrightSum, frontSum, leftsumscaled, rightsumscaled;
 volatile unsigned long next;
 
 const int ledPin =  LED_BUILTIN;
@@ -139,6 +162,37 @@ unsigned long previousMillis = 0;
 const long interval = 1000;   
 
 
+
+
+typedef struct
+{
+    uint8_t header1;
+    uint8_t header2;
+    uint16_t channels[14];
+    uint16_t checksum;
+} IBUS_Packet;
+
+IBUS_Packet packet = {};
+
+uint16_t calc_checksum(IBUS_Packet &p)
+{
+    uint16_t checksum = 0xFFFF;
+    checksum -= p.header1;
+    checksum -= p.header2;
+
+    for (int i = 0; i < 14; i++)
+    {
+        checksum -= p.channels[i] & 0xFF;
+        checksum -= (p.channels[i] >> 8) & 0xFF;
+    }
+
+    return checksum;
+}
+
+void send_packet(IBUS_Packet &p)
+{
+    SerialIBUS.write((uint8_t *)&p, sizeof(IBUS_Packet));
+}
 
 
 
@@ -182,10 +236,27 @@ ESP32_ISR_Servos.useTimer(USE_ESP32_TIMER_NO);
   sensor.startContinuous(35);
  }
 
+SerialIBUS.begin(115200);
 
+    packet.header1 = 0x20;
+    packet.header2 = 0x40;
+
+    for (int i = 0; i < 14; i++)
+    {
+        packet.channels[i] = 0x5dc;
+    }
+
+    packet.checksum = calc_checksum(packet);
+
+
+
+     Input = yaw;
+     Setpoint = 0;
+     AVGYAWPID.SetMode(AUTOMATIC);
+}
 
  
-}
+
 
 
 
@@ -197,6 +268,7 @@ modeselect();
 avoidmodes();
 controlmodes();
 servooutput();
+ibusoutput();
 gpio();
 serialprint();
 
@@ -212,7 +284,8 @@ void getReading(){
   val = sensor.read();
   pos += dir;
   ESP32_ISR_Servos.setPosition(scanner,(pos*stepAng));
-  distances[pos] = val;
+  if (val > 40){ distances[pos] = val;}
+  else { val = 0;}
   if (pos == numStep)
   {
     dir = -1;
@@ -225,17 +298,25 @@ void getReading(){
 
 ////////////////////////////////////////LEFT RIGHT AVERAGE        
    // find the left and right average 
-  if (pos > (numStep/2))
-  leftSum = (((averagedivider*leftSum) + distances[pos])/(averagedivider+1));
-  //rightSum = (((averagedivider*rightSum) + distances[pos])/(averagedivider+1));
-   else if (pos < (numStep/2))
- //  leftSum = (((averagedivider*leftSum) + distances[pos])/(averagedivider+1));
-   rightSum = (((averagedivider*rightSum) + distances[pos])/(averagedivider+1));
- turnmulti = map (MULTI, 1000, 2000, 1, 10);
- leftsumscaled = (leftSum*turnmulti);
- rightsumscaled = (rightSum*turnmulti);
-  
+  if (pos > (numStep/2)+(numStep/4));  { leftSum = (((averagedivider* leftSum) + distances[pos])/(averagedivider+1));}
+ 
+  if (pos < (numStep/2) - (numStep/4)); {rightSum = (((averagedivider*rightSum) + distances[pos])/(averagedivider+1));}
 
+ if (pos > (numStep/2) && pos < (numStep/2)+(numStep/4)) {frontleftSum = (((averagedivider*frontleftSum) + distances[pos])/(averagedivider+1));}
+
+ if (pos < (numStep/2) && pos > (numStep/2)-(numStep/4)) {frontrightSum = (((averagedivider*frontrightSum) + distances[pos])/(averagedivider+1));}
+
+  if (pos > ((numStep/2) -2) && pos < ((numStep/2) +2)) {frontSum = (((averagedivider*frontSum) + distances[pos])/(averagedivider+1));}
+
+    
+ turnmulti = map (MULTI, 1000, 2000, 0.5, 10);
+ leftsumscaled = (((0.5*leftSum)+ frontleftSum + frontSum) * turnmulti);
+ rightsumscaled = (((0.5*rightSum)+ frontrightSum + frontSum)* turnmulti);
+ 
+ AVGYAWPID.Compute();
+  
+  }
+ 
 //////////////////////////////////////////FIND TOTAL AVERAGE///////////
   total = total - readings[readIndex];
   readings[readIndex] = val;
@@ -258,11 +339,11 @@ static bool toggle0 = false;
     } else {
       ledState = LOW;
     }
-        digitalWrite(ledPin, ledState);
+     digitalWrite(ledPin, ledState);
 }
   
 
-}
+
 
 
   
@@ -438,15 +519,14 @@ if (yawsmoothen == 1)
   { 
     yaw = (int)((rightsumscaled-leftsumscaled)+1500); 
 
+if (yaw > 1800){yaw = 1800;}
+if (yaw < 1200) {yaw = 1200;}
+
   }
   else {(yaw = RCRud);
   }
-  
 
-if (yaw > 2000){yaw = 2000;}
-if (yaw < 1000) {yaw = 1000;}
-
- yawsmooth = yaw;
+ yawsmooth = Output;
  
   }
 // AVERAGE THROTTLE AVOID-----------------------------------------------
@@ -555,6 +635,23 @@ MOD = map(flightmode, 1000, 2000, 0, 180);
 ESP32_ISR_Servos.setPosition(MOTout,MOT);
 ESP32_ISR_Servos.setPosition(RUDout,RUD);
 ESP32_ISR_Servos.setPosition(MODout,MOD);
+}
+
+
+void ibusoutput(){
+ RecurringTask::interval(1000, []() {
+        for (int i = 0; i < 14; i++)
+        {
+            packet.channels[i] = 1000 + random(1000);
+        }
+        packet.checksum = calc_checksum(packet);
+    });
+
+    send_packet(packet);
+
+
+
+
 }
 
 void gpio(){
